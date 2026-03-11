@@ -20,7 +20,6 @@ documentos = loader.load() # Carrega o documento
 def train():
   splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
   chunks = splitter.split_documents(documentos)
-  
   embeddings = OpenAIEmbeddings()
   db_path = "banco-faiss"
   
@@ -32,5 +31,26 @@ def train():
   
   vectordb.save_local(db_path)
 
-
-train()
+def retrieval(pergunta):
+  embeddings = OpenAIEmbeddings()
+  db_path = "banco-faiss"
+  vectordb = FAISS.load_local(db_path, embeddings, allow_dangerous_deserialization=True)
+  docs = vectordb.similarity_search(pergunta, 4)
+  
+  contexto = "\n\n".join([f"Material: {doc.page_content}" for doc in docs])
+  
+  prompt = ChatPromptTemplate.from_template(
+    "Você é um assistente especializado.\n"
+    "Responda a pergunta do usuário SOMENTE com base no contexto abaixo.\n"
+    "Se não houver informação suficiente, diga isso claramente.\n\n"
+    "Contexto:\n{contexto}\n\n"
+    "Pergunta: {pergunta}\n\n"
+  )
+  
+  llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+  
+  chain = prompt | llm
+  resposta = chain.invoke({'contexto': contexto, 'pergunta': pergunta})
+  return resposta.content
+  
+print(retrieval("O que é Perceptron?"))
