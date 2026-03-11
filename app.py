@@ -17,3 +17,20 @@ loader = PyPDFLoader(caminho_pdf) # Instancia a classe para preparar para o carr
 documentos = loader.load() # Carrega o documento
 
 
+def train():
+  splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+  chunks = splitter.split_documents(documentos)
+  
+  embeddings = OpenAIEmbeddings()
+  db_path = "banco-faiss"
+  
+  if os.path.exists(db_path):
+    vectordb = FAISS.load_local(db_path, embeddings, allow_dangerous_deserialization=True)
+    vectordb.add_documents(chunks)
+  else:
+    vectordb = FAISS.from_documents(chunks, embeddings)
+  
+  vectordb.save_local(db_path)
+
+
+train()
